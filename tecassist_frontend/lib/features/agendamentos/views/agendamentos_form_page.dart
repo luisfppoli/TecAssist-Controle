@@ -307,7 +307,7 @@ class _AgendamentoFormPageState extends State<AgendamentoFormPage> {
                             const SizedBox(height: 24),
 
                             DropdownButtonFormField<int>(
-                              value: _clienteId,
+                              initialValue: _clienteId,
 
                               decoration: const InputDecoration(
                                 labelText: 'Cliente *',
@@ -400,7 +400,7 @@ class _AgendamentoFormPageState extends State<AgendamentoFormPage> {
                               const SizedBox(height: 20),
 
                               DropdownButtonFormField<String>(
-                                value: _status,
+                                initialValue: _status,
 
                                 decoration: const InputDecoration(
                                   labelText: 'Status',

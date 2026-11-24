@@ -723,7 +723,7 @@ class _ServicoFormPageState extends State<ServicoFormPage> {
                               )
                             else
                               DropdownButtonFormField<int>(
-                                value: _clienteId,
+                                initialValue: _clienteId,
                                 isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Cliente *',
@@ -870,7 +870,7 @@ class _ServicoFormPageState extends State<ServicoFormPage> {
                             if (widget.editando) ...[
                               const SizedBox(height: 18),
                               DropdownButtonFormField<String>(
-                                value: _status,
+                                initialValue: _status,
                                 isExpanded: true,
                                 decoration: const InputDecoration(
                                   labelText: 'Status',
@@ -1023,7 +1023,7 @@ class _AdicionarPecaDialogState extends State<_AdicionarPecaDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<int>(
-                  value: _estoqueIdSelecionado,
+                  initialValue: _estoqueIdSelecionado,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Peça do estoque',

@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tecassist_frontend/features/servicos/models/servico_model.dart';
 import 'package:tecassist_frontend/features/servicos/providers/servico_provider.dart';
 import 'package:tecassist_frontend/features/servicos/services/servico_service.dart';
 
@@ -16,18 +15,21 @@ void main() {
     provider.dispose();
   });
 
-  test('carrega serviços ordenados do mais recente para o mais antigo', () async {
-    service.itens = [
-      _servicoJson(id: 1, data: '2026-11-10T10:00:00.000Z'),
-      _servicoJson(id: 2, data: '2026-11-15T10:00:00.000Z'),
-    ];
+  test(
+    'carrega serviços ordenados do mais recente para o mais antigo',
+    () async {
+      service.itens = [
+        _servicoJson(id: 1, data: '2026-11-10T10:00:00.000Z'),
+        _servicoJson(id: 2, data: '2026-11-15T10:00:00.000Z'),
+      ];
 
-    await provider.carregar();
+      await provider.carregar();
 
-    expect(provider.jaCarregou, isTrue);
-    expect(provider.servicos.map((item) => item.id), [2, 1]);
-    expect(provider.isLoading, isFalse);
-  });
+      expect(provider.jaCarregou, isTrue);
+      expect(provider.servicos.map((item) => item.id), [2, 1]);
+      expect(provider.isLoading, isFalse);
+    },
+  );
 
   test('atualiza status do serviço e recarrega a listagem', () async {
     service.itens = [_servicoJson(id: 10, status: 'ABERTO')];

@@ -135,7 +135,7 @@ class _ServicosPageState extends State<ServicosPage> {
             return AlertDialog(
               title: const Text('Atualizar status'),
               content: DropdownButtonFormField<String>(
-                value: selecionado,
+                initialValue: selecionado,
                 isExpanded: true,
                 decoration: const InputDecoration(
                   labelText: 'Status do serviço',
@@ -287,7 +287,7 @@ class _ServicosPageState extends State<ServicosPage> {
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  value: _filtroStatus,
+                  initialValue: _filtroStatus,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Filtrar por status',

@@ -153,7 +153,7 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
             return AlertDialog(
               title: const Text('Alterar status'),
               content: DropdownButtonFormField<String>(
-                value: selecionado,
+                initialValue: selecionado,
                 isExpanded: true,
                 items: opcoes.map((status) {
                   return DropdownMenuItem<String>(
@@ -1478,7 +1478,7 @@ class _AdicionarPecaDialogState extends State<_AdicionarPecaDialog> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 DropdownButtonFormField<int>(
-                  value: _estoqueIdSelecionado,
+                  initialValue: _estoqueIdSelecionado,
                   isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'Peça do estoque',
