@@ -10,7 +10,6 @@ describe("Fluxo Completo TecAssist", () => {
     let agendamentoId;
     let servicoId;
     let estoqueId;
-    let usuarioId;
 
     beforeAll(async () => {
 
@@ -20,16 +19,16 @@ describe("Fluxo Completo TecAssist", () => {
             where: {
                 email: "admin@teste.com"
             },
-            update: {},
+            update: { ativo: true },
             create: {
                 nome: "Administrador",
                 email: "admin@teste.com",
                 senha: senhaHash,
-                tipo: "ADMIN"
+                tipo: "ADMIN",
+                ativo: true,
             }
         });
 
-        usuarioId = usuario.id;
 
         const login = await request(app)
             .post("/auth/login")
@@ -98,23 +97,23 @@ describe("Fluxo Completo TecAssist", () => {
         agendamentoId = agendamentoResponse.body.id;
 
         const converterResponse = await request(app)
-            .post(`/servicos/converter/${agendamentoId}`)
+            .post(`/agendamentos/${agendamentoId}/converter`)
             .set("Authorization", `Bearer ${token}`)
             .send({
                 equipamento: "TV Samsung",
                 marca: "Samsung",
                 modelo: "UN40",
-                problema: "Não liga",
-                usuarioId
+                problema: "Não liga"
             });
 
 
         expect(converterResponse.status).toBe(201);
 
-        servicoId = converterResponse.body.id;
+        servicoId = converterResponse.body.servico.id;
 
-        console.log(converterResponse.body);
-        expect(converterResponse.body.status).toBe("ABERTO");
+        expect(converterResponse.body.servico.status).toBe("ABERTO");
+        expect(converterResponse.body.servico.codigo).toMatch(/^TA\d{4}\.\d{4}$/);
+        expect(converterResponse.body.servico.usuario).not.toHaveProperty("senha");
 
         const estoqueResponse = await request(app)
             .post("/estoque")

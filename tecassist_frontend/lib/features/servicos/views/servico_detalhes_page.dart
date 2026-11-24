@@ -13,11 +13,12 @@ import '../../../core/widgets/blue_pattern_background.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../estoque/models/estoque_model.dart';
 import '../../estoque/providers/estoque_provider.dart';
-
 import '../models/servico_model.dart';
 import '../models/servico_peca_model.dart';
 import '../models/notificacao_model.dart';
 import '../providers/servico_provider.dart';
+import '../../configuracoes/models/configuracao_model.dart';
+import '../../configuracoes/providers/configuracao_provider.dart';
 
 class ServicoDetalhesPage extends StatefulWidget {
   final int servicoId;
@@ -266,7 +267,20 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
     return null;
   }
 
-  String _montarMensagemWhatsApp(ServicoModel servico) {
+  Future<void> _copiarCodigoConsulta(String codigo) async {
+    await Clipboard.setData(ClipboardData(text: codigo));
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Código de consulta copiado.')),
+    );
+  }
+
+  String _montarMensagemWhatsApp(
+    ServicoModel servico,
+    ConfiguracaoModel configuracao,
+  ) {
     final equipamento = [
       servico.equipamento,
       if (servico.marca?.trim().isNotEmpty == true) servico.marca!.trim(),
@@ -275,12 +289,33 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
 
     final codigo = servico.codigo ?? '#${servico.id}';
 
-    return 'Olá, ${servico.clienteNome}!\n\n'
-        'Aqui é da assistência técnica. Temos uma atualização sobre o seu atendimento.\n\n'
-        'Código do serviço: $codigo\n'
-        'Equipamento: $equipamento\n'
-        'Status atual: ${servicoStatusLabel(servico.status)}\n\n'
-        'Em caso de dúvidas, estamos à disposição!';
+    final assistencia = configuracao.nomeAssistencia.trim().isEmpty
+        ? 'nossa assistência técnica'
+        : configuracao.nomeAssistencia.trim();
+
+    final substituicoes = <String, String>{
+      '{cliente}': servico.clienteNome,
+      '{codigo}': codigo,
+      '{codigoConsulta}': servico.codigoConsulta ?? '',
+      '{equipamento}': equipamento,
+      '{marca}': servico.marca ?? '',
+      '{modelo}': servico.modelo ?? '',
+      '{problema}': servico.problema ?? '',
+      '{diagnostico}': servico.diagnostico ?? '',
+      '{solucao}': servico.solucao ?? '',
+      '{status}': servicoStatusLabel(servico.status),
+      '{assistencia}': assistencia,
+      '{telefoneAssistencia}': configuracao.telefoneAssistencia,
+      '{enderecoAssistencia}': configuracao.enderecoAssistencia,
+    };
+
+    var mensagem = configuracao.mensagemWhatsApp;
+
+    substituicoes.forEach((variavel, valor) {
+      mensagem = mensagem.replaceAll(variavel, valor);
+    });
+
+    return mensagem.trim();
   }
 
   Future<void> _prepararMensagemWhatsApp() async {
@@ -291,6 +326,7 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
     }
 
     final telefoneOriginal = servico.clienteTelefone?.trim() ?? '';
+
     if (telefoneOriginal.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -300,7 +336,17 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
       return;
     }
 
-    final mensagem = _montarMensagemWhatsApp(servico);
+    final configuracaoProvider = context.read<ConfiguracaoProvider>();
+
+    await configuracaoProvider.carregar();
+
+    if (!mounted) return;
+
+    final configuracao =
+        configuracaoProvider.configuracao ?? const ConfiguracaoModel();
+
+    final mensagem = _montarMensagemWhatsApp(servico, configuracao);
+
     final provider = context.read<ServicoProvider>();
 
     final resultado = await provider.prepararWhatsApp(
@@ -325,11 +371,14 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
     }
 
     final numero = _normalizarTelefoneWhatsApp(resultado.telefone);
+
     if (numero == null) {
       await Clipboard.setData(ClipboardData(text: mensagem));
+
       if (!mounted) {
         return;
       }
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
@@ -343,6 +392,7 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
     final uri = Uri.https('wa.me', '/$numero', {'text': mensagem});
 
     var abriuWhatsApp = false;
+
     try {
       abriuWhatsApp = await launchUrl(
         uri,
@@ -865,7 +915,66 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
                   ),
                 ),
               )
-            : _conteudo(_servico!, auth, estoqueProvider),
+            : _conteudo(_servico!, auth, estoqueProvider, servicoProvider),
+      ),
+    );
+  }
+
+  Widget _cartaoCodigoConsulta(ServicoModel servico) {
+    final codigo = servico.codigoConsulta;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.lightBlue,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.public_outlined, color: AppColors.primary, size: 28),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Código de consulta pública',
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                SelectableText(
+                  codigo ?? 'Código não disponível',
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Forneça este código ao cliente para consultar o status do serviço na página pública.',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (codigo != null && codigo.isNotEmpty)
+            IconButton(
+              tooltip: 'Copiar código',
+              onPressed: () => _copiarCodigoConsulta(codigo),
+              icon: const Icon(Icons.copy_outlined, color: AppColors.primary),
+            ),
+        ],
       ),
     );
   }
@@ -874,6 +983,7 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
     ServicoModel servico,
     AuthProvider auth,
     EstoqueProvider estoqueProvider,
+    ServicoProvider servicoProvider,
   ) {
     final cor = _corStatus(servico.status);
     final equipamentoDetalhe = [
@@ -980,6 +1090,10 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
 
                 const SizedBox(height: 16),
 
+                _cartaoCodigoConsulta(servico),
+
+                const SizedBox(height: 16),
+
                 _SecaoServico(
                   titulo: 'Cliente e responsável',
                   filhos: [
@@ -1066,6 +1180,9 @@ class _ServicoDetalhesPageState extends State<ServicoDetalhesPage> {
                       ),
                   ],
                 ),
+
+                const SizedBox(height: 16),
+                _comunicacaoSection(servico, servicoProvider),
               ],
             ),
           ),

@@ -15,6 +15,7 @@ import 'features/servicos/providers/servico_provider.dart';
 import 'features/servicos/services/servico_service.dart';
 import 'features/estoque/providers/estoque_provider.dart';
 import 'features/estoque/services/estoque_service.dart';
+import 'features/configuracoes/providers/configuracao_provider.dart';
 import 'router/app_router.dart';
 
 Future<void> main() async {
@@ -62,6 +63,7 @@ class TecAssistApp extends StatelessWidget {
         ChangeNotifierProvider(
           create: (_) => EstoqueProvider(EstoqueService()),
         ),
+        ChangeNotifierProvider(create: (_) => ConfiguracaoProvider()),
       ],
 
       child: MaterialApp.router(

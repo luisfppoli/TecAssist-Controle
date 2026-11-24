@@ -1,76 +1,86 @@
 const prisma = require("../config/prisma");
 
-async function create(data) {
+const usuarioPublico = {
+    id: true,
+    nome: true,
+    email: true,
+    tipo: true,
+};
 
+const relacionamentosServico = {
+    cliente: true,
+    usuario: {
+        select: usuarioPublico,
+    },
+    agendamento: true,
+};
+
+async function create(data) {
     return prisma.servico.create({
         data,
-        include: {
-            cliente: true,
-            usuario: true,
-            agendamento: true
-        }
+        include: relacionamentosServico,
     });
-
 }
 
 async function findAll() {
-    
     return prisma.servico.findMany({
         include: {
-            cliente: true,
-            usuario: true,
-            agendamento: true,
-
+            ...relacionamentosServico,
             pecas: {
                 include: {
-                    estoque: true
-                }
-            }
-        }
+                    estoque: true,
+                },
+            },
+        },
     });
 }
 
 async function findById(id) {
-
     return prisma.servico.findUnique({
-        where: {id},
+        where: { id },
         include: {
-            cliente: true,
-            usuario: true,
-            agendamento: true,
-
+            ...relacionamentosServico,
             pecas: {
                 include: {
-                    estoque: true
-                }
-            }
-        }
+                    estoque: true,
+                },
+            },
+        },
     });
-
 }
 
 async function findByCodigo(codigo) {
-
     return prisma.servico.findUnique({
-        where: {codigo}
+        where: { codigo },
     });
+}
 
+async function findByCodigoConsulta(codigoConsulta) {
+    return prisma.servico.findUnique({
+        where: { codigoConsulta },
+        select: {
+            equipamento: true,
+            marca: true,
+            modelo: true,
+            status: true,
+            createdAt: true,
+        },
+    });
 }
 
 async function update(id, data) {
-
     return prisma.servico.update({
-        where: {id},data
+        where: { id },
+        data,
     });
-
 }
 
-async function remove(id) {
-
-    return prisma.servico.delete({
-        where: {id}
+async function remove(id, transaction = prisma) {
+    return transaction.servico.delete({
+        where: {
+            id
+        }
     });
-    
 }
 
 module.exports = {
@@ -78,6 +88,7 @@ module.exports = {
     findAll,
     findById,
     findByCodigo,
+    findByCodigoConsulta,
     update,
-    remove
+    remove,
 };

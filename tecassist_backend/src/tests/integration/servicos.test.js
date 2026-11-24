@@ -16,12 +16,13 @@ describe("Fluxo Serviço", () => {
 
         const usuario = await prisma.usuario.upsert({
             where: { email: "admin@teste.com" },
-            update: {},
+            update: { ativo: true },
             create: {
                 nome: "Administrador",
                 email: "admin@teste.com",
                 senha: senhaHash,
-                tipo: "ADMIN"
+                tipo: "ADMIN",
+                ativo: true,
             }
 
         });
@@ -83,6 +84,7 @@ describe("Fluxo Serviço", () => {
         expect(response.statusCode).toBe(201);
 
         expect(response.body).toHaveProperty("codigo");
+        expect(response.body.usuario).not.toHaveProperty("senha");
 
     });
 

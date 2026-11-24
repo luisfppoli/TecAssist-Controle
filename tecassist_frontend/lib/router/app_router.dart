@@ -18,6 +18,8 @@ import '../features/servicos/views/servico_detalhes_page.dart';
 import '../features/servicos/views/servico_form_page.dart';
 import '../features/estoque/views/estoque_form_page.dart';
 import '../features/estoque/views/estoque_detalhes_page.dart';
+import '../features/configuracoes/views/configuracoes_page.dart';
+import '../features/sac/views/sac_page.dart';
 import 'app_shell.dart';
 
 class AppRouter {
@@ -91,7 +93,10 @@ class AppRouter {
 
             final index = _sectionToIndex(section);
 
-            return NoTransitionPage(child: AppShell(initialIndex: index));
+            return NoTransitionPage(
+              key: const ValueKey('app-shell'),
+              child: AppShell(initialIndex: index),
+            );
           },
         ),
 
@@ -277,17 +282,10 @@ class AppRouter {
 
         GoRoute(
           path: '/configuracoes',
-          builder: (context, state) {
-            return const _PlaceholderPage(titulo: 'Configurações');
-          },
+          builder: (context, state) => const ConfiguracoesPage(),
         ),
 
-        GoRoute(
-          path: '/sac',
-          builder: (context, state) {
-            return const _PlaceholderPage(titulo: 'SAC');
-          },
-        ),
+        GoRoute(path: '/sac', builder: (context, state) => const SacPage()),
 
         GoRoute(
           path: '/codigo-cadastro',

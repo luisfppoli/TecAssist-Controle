@@ -56,6 +56,7 @@ model Agendamento {
 model Servico {
   id           Int      @id @default(autoincrement())
   codigo       String?   @unique
+  codigoConsulta String   @unique
   equipamento  String
   marca        String?
   modelo       String?
@@ -131,4 +132,16 @@ model ServicoPeca {
   estoque Estoque @relation(fields: [estoqueId],references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model ConfiguracaoAssistencia {
+  id                  Int      @id @default(1)
+  estoqueMinimo       Int      @default(5)
+  mensagemWhatsApp    String   @default("Olá, {cliente}! Aqui é da {assistencia}. Temos uma atualização sobre o seu atendimento. Código do serviço: {codigo}. Código para consulta pública: {codigoConsulta}. Equipamento: {equipamento}. Status atual: {status}. Em caso de dúvidas, estamos à disposição!") @db.Text
+  nomeAssistencia     String?
+  telefoneAssistencia String?
+  enderecoAssistencia String?
+  emailSuporte         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt @default(now())
 }

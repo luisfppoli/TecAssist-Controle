@@ -11,6 +11,9 @@ const agendamentoRoutes = require("./routes/agendamentoRoutes");
 const servicoRoutes = require("./routes/servicoRoutes");
 const estoqueRoutes = require("./routes/estoqueRoutes");
 const movimentacaoRoutes = require("./routes/movimentacaoRoutes");
+const notificacaoRoutes = require("./routes/notificacaoRoutes");
+const configuracaoRoutes = require("./routes/configuracaoRoutes");
+const consultaPublicaRoutes = require("./routes/consultaPublicaRoutes");
 
 const app = express();
 
@@ -34,6 +37,9 @@ app.use("/agendamentos", agendamentoRoutes);
 app.use("/servicos", servicoRoutes);
 app.use("/estoque", estoqueRoutes);
 app.use("/movimentacoes", movimentacaoRoutes);
+app.use("/notificacoes", notificacaoRoutes);
+app.use("/configuracoes", configuracaoRoutes);
+app.use("/consulta-publica", consultaPublicaRoutes);
 
 app.get("/", (req, res) => {
     res.json({

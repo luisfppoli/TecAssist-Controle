@@ -19,7 +19,10 @@ class EstoqueModel {
 
   bool get semEstoque => quantidade <= 0;
 
-  bool get estoqueBaixo => quantidade > 0 && quantidade <= 5;
+  bool get estoqueBaixo => estoqueBaixoComLimite(5);
+
+  bool estoqueBaixoComLimite(int limite) =>
+      quantidade > 0 && quantidade <= limite;
 
   factory EstoqueModel.fromJson(Map<String, dynamic> json) {
     return EstoqueModel(

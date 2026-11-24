@@ -65,6 +65,7 @@ double? _valorServico(dynamic valor) {
 class ServicoModel {
   final int id;
   final String? codigo;
+  final String? codigoConsulta;
 
   final String equipamento;
   final String? marca;
@@ -96,6 +97,7 @@ class ServicoModel {
   const ServicoModel({
     required this.id,
     this.codigo,
+    this.codigoConsulta,
     required this.equipamento,
     this.marca,
     this.modelo,
@@ -146,6 +148,7 @@ class ServicoModel {
     return ServicoModel(
       id: id,
       codigo: json['codigo']?.toString(),
+      codigoConsulta: json['codigoConsulta']?.toString(),
 
       equipamento: json['equipamento']?.toString() ?? '',
 

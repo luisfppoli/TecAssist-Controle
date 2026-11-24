@@ -91,25 +91,6 @@ async function atualizarStatus(req, res) {
 
 }
 
-async function converterAgendamento(req, res) {
-    
-    try {
-        const servico = await servicoService.converterAgendamento(
-            req.params.agendamentoId,
-            {
-                ...req.body,
-                usuarioId: req.usuario.id
-            }
-        );
-
-        res.status(201).json(servico);
-        
-    } catch (error) {
-        res.status(400).json({ error: error.message });
-    }
-
-}
-
 async function adicionarPeca(req, res) {
     try {
         const peca = await servicoService.adicionarPeca(
@@ -152,7 +133,6 @@ module.exports = {
     update,
     remove,
     atualizarStatus,
-    converterAgendamento,
     adicionarPeca,
     removerPeca
 };

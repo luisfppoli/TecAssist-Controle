@@ -130,15 +130,6 @@ class DashboardDrawer extends StatelessWidget {
                         },
                       ),
 
-                    if (auth.isAdmin)
-                      _DrawerItem(
-                        icone: Icons.lock_clock,
-                        titulo: 'Código de cadastro',
-                        onTap: () {
-                          _navegarRota(context, '/codigo-cadastro');
-                        },
-                      ),
-
                     _DrawerItem(
                       icone: Icons.people_outline,
                       titulo: 'Clientes',

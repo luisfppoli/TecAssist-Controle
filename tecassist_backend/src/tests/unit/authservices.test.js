@@ -26,7 +26,8 @@ describe("AuthService", () => {
             nome: "Administrador",
             email: "admin@teste.com",
             senha: "hashSenha",
-            tipo: "ADMIN"
+            tipo: "ADMIN",
+            ativo: true,
         });
 
         bcrypt.compare.mockResolvedValue(true);
@@ -64,7 +65,8 @@ describe("AuthService", () => {
             nome: "Administrador",
             email: "admin@teste.com",
             senha: "hashSenha",
-            tipo: "ADMIN"
+            tipo: "ADMIN",
+            ativo: true,
         });
 
         bcrypt.compare.mockResolvedValue(false);
@@ -76,6 +78,24 @@ describe("AuthService", () => {
             )
         ).rejects.toThrow("Senha inválida");
 
+    });
+
+
+    test("Deve impedir login de usuário desativado", async () => {
+        prisma.usuario.findUnique.mockResolvedValue({
+            id: 2,
+            nome: "Funcionário desativado",
+            email: "funcionario@teste.com",
+            senha: "hashSenha",
+            tipo: "FUNCIONARIO",
+            ativo: false,
+        });
+
+        await expect(
+            authService.login("funcionario@teste.com", "123456")
+        ).rejects.toThrow("Esta conta foi desativada. Entre em contato com o administrador.");
+
+        expect(bcrypt.compare).not.toHaveBeenCalled();
     });
 
 });

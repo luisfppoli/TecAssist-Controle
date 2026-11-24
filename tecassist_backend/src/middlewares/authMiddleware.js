@@ -20,7 +20,6 @@ function authMiddleware(req, res, next) {
             token,
             process.env.JWT_SECRET
         );
-        console.log(decoded);
         req.usuario = decoded;
 
         next();

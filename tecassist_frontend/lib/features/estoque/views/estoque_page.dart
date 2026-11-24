@@ -8,6 +8,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../models/estoque_model.dart';
 import '../providers/estoque_provider.dart';
 import '../../../core/widgets/blue_pattern_background.dart';
+import '../../configuracoes/providers/configuracao_provider.dart';
 
 class EstoquePage extends StatefulWidget {
   const EstoquePage({super.key});
@@ -26,10 +27,12 @@ class _EstoquePageState extends State<EstoquePage> {
   void initState() {
     super.initState();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<EstoqueProvider>().carregar();
-      }
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await Future.wait([
+        context.read<ConfiguracaoProvider>().carregar(),
+        context.read<EstoqueProvider>().carregar(),
+      ]);
     });
   }
 
@@ -89,24 +92,24 @@ class _EstoquePageState extends State<EstoquePage> {
     );
   }
 
-  Color _corQuantidade(EstoqueModel item) {
+  Color _corQuantidade(EstoqueModel item, int limiteEstoque) {
     if (item.semEstoque) {
       return AppColors.error;
     }
 
-    if (item.estoqueBaixo) {
+    if (item.estoqueBaixoComLimite(limiteEstoque)) {
       return Colors.orange.shade800;
     }
 
     return Colors.green.shade700;
   }
 
-  String _statusQuantidade(EstoqueModel item) {
+  String _statusQuantidade(EstoqueModel item, int limiteEstoque) {
     if (item.semEstoque) {
       return 'Sem estoque';
     }
 
-    if (item.estoqueBaixo) {
+    if (item.estoqueBaixoComLimite(limiteEstoque)) {
       return 'Estoque baixo';
     }
 
@@ -117,6 +120,8 @@ class _EstoquePageState extends State<EstoquePage> {
   Widget build(BuildContext context) {
     final provider = context.watch<EstoqueProvider>();
     final auth = context.watch<AuthProvider>();
+    final configuracaoProvider = context.watch<ConfiguracaoProvider>();
+    final limiteEstoque = configuracaoProvider.estoqueMinimo;
 
     final termo = _busca.trim().toLowerCase();
 
@@ -129,7 +134,7 @@ class _EstoquePageState extends State<EstoquePage> {
 
       final correspondeFiltro = switch (_filtro) {
         'ZERADO' => item.semEstoque,
-        'BAIXO' => item.estoqueBaixo,
+        'BAIXO' => item.estoqueBaixoComLimite(limiteEstoque),
         _ => true,
       };
 
@@ -200,19 +205,25 @@ class _EstoquePageState extends State<EstoquePage> {
             const SizedBox(height: 12),
 
             DropdownButtonFormField<String>(
-              value: _filtro,
+              initialValue: _filtro,
               isExpanded: true,
               decoration: const InputDecoration(
                 labelText: 'Filtrar estoque',
                 prefixIcon: Icon(Icons.filter_list),
               ),
-              items: const [
-                DropdownMenuItem(value: 'TODOS', child: Text('Todos os itens')),
+              items: [
+                const DropdownMenuItem(
+                  value: 'TODOS',
+                  child: Text('Todos os itens'),
+                ),
                 DropdownMenuItem(
                   value: 'BAIXO',
-                  child: Text('Estoque baixo (até 5)'),
+                  child: Text('Estoque baixo (até $limiteEstoque)'),
                 ),
-                DropdownMenuItem(value: 'ZERADO', child: Text('Sem estoque')),
+                const DropdownMenuItem(
+                  value: 'ZERADO',
+                  child: Text('Sem estoque'),
+                ),
               ],
               onChanged: (value) {
                 if (value == null) {
@@ -270,7 +281,8 @@ class _EstoquePageState extends State<EstoquePage> {
                 Expanded(
                   child: _ResumoEstoque(
                     titulo: 'Estoque baixo',
-                    valor: '${provider.totalEstoqueBaixo}',
+                    valor:
+                        '${provider.itens.where((item) => item.estoqueBaixoComLimite(limiteEstoque)).length}',
                     icone: Icons.warning_amber_outlined,
                     cor: Colors.orange.shade800,
                   ),
@@ -333,8 +345,8 @@ class _EstoquePageState extends State<EstoquePage> {
                 (item) => _EstoqueCard(
                   item: item,
                   podeEditar: auth.isAdmin,
-                  corQuantidade: _corQuantidade(item),
-                  statusQuantidade: _statusQuantidade(item),
+                  corQuantidade: _corQuantidade(item, limiteEstoque),
+                  statusQuantidade: _statusQuantidade(item, limiteEstoque),
                   onDetalhes: () {
                     context.push('/estoque/${item.id}');
                   },

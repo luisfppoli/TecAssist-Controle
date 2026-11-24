@@ -4,265 +4,185 @@ const prisma = require("../../config/prisma");
 
 jest.mock("../../repositories/servicoRepository");
 jest.mock("../../config/prisma", () => ({
-    cliente: {
-        findUnique: jest.fn()
-    },
-
-    usuario: {
-        findUnique: jest.fn()
-    },
-
-    servico: {
-        update: jest.fn(),
-        findUnique: jest.fn()
-    },
-
-    agendamento: {
-        findUnique: jest.fn(),
-        update: jest.fn()
-    },
-
-    estoque: {
-        findUnique: jest.fn(),
-        update: jest.fn()
-    },
-
-    servicoPeca: {
-        create: jest.fn()
-    },
-
-    movimentacaoEstoque: {
-        create: jest.fn()
-    }
-
+    cliente: { findUnique: jest.fn() },
+    usuario: { findUnique: jest.fn() },
+    servico: { update: jest.fn() },
+    $transaction: jest.fn(),
 }));
 
-describe("ServicoService", () => {
+function configurarTransacao({
+    servicoEncontrado = { id: 1, status: "ABERTO" },
+    estoqueEncontrado = { id: 1, quantidade: 10 },
+    quantidadeAtualizada = 1,
+} = {}) {
+    const tx = {
+        servico: {
+            findUnique: jest.fn().mockResolvedValue(servicoEncontrado),
+        },
+        estoque: {
+            findUnique: jest.fn().mockResolvedValue(estoqueEncontrado),
+            updateMany: jest.fn().mockResolvedValue({ count: quantidadeAtualizada }),
+        },
+        servicoPeca: {
+            create: jest.fn().mockResolvedValue({ id: 1 }),
+        },
+        movimentacaoEstoque: {
+            create: jest.fn().mockResolvedValue({ id: 1, tipo: "SAIDA" }),
+        },
+    };
 
+    prisma.$transaction.mockImplementation((callback) => callback(tx));
+    return tx;
+}
+
+describe("ServicoService", () => {
     afterEach(() => {
         jest.clearAllMocks();
     });
 
-    test("Deve exigir equipamento", async () => {
-
-        await expect(
-            servicoService.create({})
-        ).rejects.toThrow("Equipamento é obrigatório");
-
+    test("deve exigir equipamento", async () => {
+        await expect(servicoService.create({})).rejects.toThrow(
+            "Equipamento é obrigatório"
+        );
     });
 
-    test("Deve exigir cliente", async () => {
-
+    test("deve exigir cliente", async () => {
         await expect(
-            servicoService.create({
-                equipamento: "TV"
-            })
+            servicoService.create({ equipamento: "TV" })
         ).rejects.toThrow("Cliente é obrigatório");
-
     });
 
-    test("Deve exigir usuário", async () => {
-
+    test("deve exigir usuário responsável", async () => {
         await expect(
-            servicoService.create({
-                equipamento: "TV",
-                clienteId: 1
-            })
+            servicoService.create({ equipamento: "TV", clienteId: 1 })
         ).rejects.toThrow("Usuário responsável é obrigatório");
-
     });
 
-    test("Deve validar cliente existente", async () => {
-
+    test("deve validar cliente existente", async () => {
         prisma.cliente.findUnique.mockResolvedValue(null);
 
         await expect(
             servicoService.create({
                 equipamento: "TV",
                 clienteId: 1,
-                usuarioId: 1
+                usuarioId: 1,
             })
         ).rejects.toThrow("Cliente não encontrado");
-
     });
 
-    test("Deve validar usuário existente", async () => {
-
-        prisma.cliente.findUnique.mockResolvedValue({
-            id: 1
-        });
-
+    test("deve validar usuário existente", async () => {
+        prisma.cliente.findUnique.mockResolvedValue({ id: 1 });
         prisma.usuario.findUnique.mockResolvedValue(null);
 
         await expect(
             servicoService.create({
                 equipamento: "TV",
                 clienteId: 1,
-                usuarioId: 1
+                usuarioId: 1,
             })
         ).rejects.toThrow("Usuário não encontrado");
-
     });
 
-    test("Deve buscar serviço por id", async () => {
+    test("deve buscar serviço por ID", async () => {
+        servicoRepository.findById.mockResolvedValue({ id: 1 });
 
-        servicoRepository.findById.mockResolvedValue({
-            id: 1
-        });
-
-        const resultado =
-            await servicoService.findById(1);
+        const resultado = await servicoService.findById(1);
 
         expect(resultado.id).toBe(1);
-
     });
 
-    test("Deve lançar erro quando serviço não existir", async () => {
-
+    test("deve lançar erro quando serviço não existir", async () => {
         servicoRepository.findById.mockResolvedValue(null);
 
-        await expect(
-            servicoService.findById(999)
-        ).rejects.toThrow("Serviço não encontrado");
-
-    });
-
-    test("Deve atualizar status", async () => {
-
-        servicoRepository.update.mockResolvedValue({
-            status: "PRONTO"
-        });
-
-        const resultado =
-            await servicoService.atualizarStatus(
-                1,
-                "PRONTO"
-            );
-
-        expect(resultado.status).toBe("PRONTO");
-
-    });
-
-    test("Deve rejeitar status inválido", async () => {
-
-        await expect(
-            servicoService.atualizarStatus(
-                1,
-                "TESTE"
-            )
-        ).rejects.toThrow("Status inválido");
-
-    });
-
-    test("Deve validar agendamento existente", async () => {
-
-        prisma.agendamento.findUnique.mockResolvedValue(
-            null
-        );
-
-        await expect(
-            servicoService.converterAgendamento(
-                1,
-                {}
-            )
-        ).rejects.toThrow(
-            "Agendamento não encontrado"
-        );
-
-    });
-
-    test("Deve validar serviço existente ao adicionar peça", async () => {
-
-        prisma.servico.findUnique.mockResolvedValue(
-            null
-        );
-
-        await expect(
-            servicoService.adicionarPeca(
-                1,
-                {}
-            )
-        ).rejects.toThrow(
+        await expect(servicoService.findById(999)).rejects.toThrow(
             "Serviço não encontrado"
         );
-
     });
 
-    test("Deve validar peça existente", async () => {
+    test("deve aceitar os status oficiais usados pelo Flutter", async () => {
+        servicoRepository.update.mockResolvedValue({ status: "CONCLUIDO" });
 
-        prisma.servico.findUnique.mockResolvedValue({
-            id: 1
+        const resultado = await servicoService.atualizarStatus(1, "CONCLUIDO");
+
+        expect(resultado.status).toBe("CONCLUIDO");
+        expect(servicoRepository.update).toHaveBeenCalledWith(1, {
+            status: "CONCLUIDO",
+        });
+    });
+
+    test("deve rejeitar status que não fazem parte da lista oficial", async () => {
+        await expect(
+            servicoService.atualizarStatus(1, "PRONTO")
+        ).rejects.toThrow("Status inválido");
+    });
+
+    test("deve permitir salvar um serviço antigo sem trocar seu status legado", async () => {
+        servicoRepository.findById.mockResolvedValue({
+            id: 1,
+            status: "PRONTO",
+        });
+        servicoRepository.update.mockResolvedValue({
+            id: 1,
+            status: "PRONTO",
         });
 
-        prisma.estoque.findUnique.mockResolvedValue(
-            null
-        );
+        const resultado = await servicoService.update(1, {
+            status: "PRONTO",
+            equipamento: "TV",
+        });
+
+        expect(resultado.status).toBe("PRONTO");
+    });
+
+    test("deve rejeitar status legado quando for uma nova alteração", async () => {
+        servicoRepository.findById.mockResolvedValue({
+            id: 1,
+            status: "ABERTO",
+        });
 
         await expect(
-            servicoService.adicionarPeca(
-                1,
-                {
-                    estoqueId: 1,
-                    quantidade: 1
-                }
-            )
-        ).rejects.toThrow(
-            "Peça não encontrada"
-        );
-
+            servicoService.update(1, { status: "PRONTO" })
+        ).rejects.toThrow("Status inválido");
     });
 
-    test("Deve validar estoque insuficiente", async () => {
+    test("deve validar serviço existente ao adicionar peça", async () => {
+        configurarTransacao({ servicoEncontrado: null });
 
-        prisma.servico.findUnique.mockResolvedValue({
-            id: 1
-        });
-
-        prisma.estoque.findUnique.mockResolvedValue({
-            id: 1,
-            quantidade: 1
-        });
-
-        await expect(
-            servicoService.adicionarPeca(
-                1,
-                {
-                    estoqueId: 1,
-                    quantidade: 5
-                }
-            )
-        ).rejects.toThrow(
-            "Estoque insuficiente"
+        await expect(servicoService.adicionarPeca(1, 1, 2)).rejects.toThrow(
+            "Serviço não encontrado."
         );
-
     });
 
-    test("Deve adicionar peça com sucesso", async () => {
+    test("deve validar peça existente ao adicionar peça", async () => {
+        configurarTransacao({ estoqueEncontrado: null });
 
-        prisma.servico.findUnique.mockResolvedValue({
-            id: 1
-        });
+        await expect(servicoService.adicionarPeca(1, 1, 2)).rejects.toThrow(
+            "Peça não encontrada no estoque."
+        );
+    });
 
-        prisma.estoque.findUnique.mockResolvedValue({
-            id: 1,
-            quantidade: 10
-        });
+    test("deve rejeitar quantidade acima do estoque", async () => {
+        configurarTransacao({ quantidadeAtualizada: 0 });
 
-        prisma.servicoPeca.create.mockResolvedValue({
-            id: 1
-        });
+        await expect(servicoService.adicionarPeca(1, 1, 20)).rejects.toThrow(
+            "Quantidade insuficiente no estoque."
+        );
+    });
 
-        const resultado =
-            await servicoService.adicionarPeca(
-                1,
-                {
-                    estoqueId: 1,
-                    quantidade: 2
-                }
-            );
+    test("deve adicionar peça com a assinatura atual de três parâmetros", async () => {
+        const tx = configurarTransacao();
+
+        const resultado = await servicoService.adicionarPeca(1, 1, 2);
 
         expect(resultado.id).toBe(1);
-
+        expect(tx.estoque.updateMany).toHaveBeenCalledWith({
+            where: { id: 1, quantidade: { gte: 2 } },
+            data: { quantidade: { decrement: 2 } },
+        });
+        expect(tx.movimentacaoEstoque.create).toHaveBeenCalledWith(
+            expect.objectContaining({
+                data: { tipo: "SAIDA", quantidade: 2, estoqueId: 1 },
+            })
+        );
     });
-
 });

@@ -1,6 +1,6 @@
 {
-    "name": "tecassist_frontend",
-    "short_name": "tecassist_frontend",
+    "name": "TecAssist Controle",
+    "short_name": "TecAssist",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

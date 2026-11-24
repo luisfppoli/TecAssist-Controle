@@ -1,4 +1,6 @@
 const request = require("supertest");
+const bcrypt = require("bcrypt");
+const prisma = require("../../config/prisma");
 
 const app = require("../../app");
 
@@ -8,6 +10,19 @@ let estoqueId;
 describe("Fluxo Estoque", () => {
 
     beforeAll(async () => {
+
+        const senhaHash = await bcrypt.hash("123456", 10);
+        await prisma.usuario.upsert({
+            where: { email: "admin@teste.com" },
+            update: { ativo: true },
+            create: {
+                nome: "Administrador de Teste",
+                email: "admin@teste.com",
+                senha: senhaHash,
+                tipo: "ADMIN",
+                ativo: true,
+            },
+        });
 
         const login = await request(app)
             .post("/auth/login")

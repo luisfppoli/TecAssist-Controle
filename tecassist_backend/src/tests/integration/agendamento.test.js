@@ -8,6 +8,7 @@ describe("Agendamento", () => {
     let clienteId;
     let token;
     let agendamentoId;
+    let usuarioId;
 
     beforeAll(async () => {
 
@@ -26,12 +27,13 @@ describe("Agendamento", () => {
 
         const usuario = await prisma.usuario.upsert({
             where: { email: "admin@teste.com" },
-            update: {},
+            update: { ativo: true },
             create: {
                 nome: "Administrador",
                 email: "admin@teste.com",
                 senha: senhaHash,
-                tipo: "ADMIN"
+                tipo: "ADMIN",
+                ativo: true,
             }
 
         });

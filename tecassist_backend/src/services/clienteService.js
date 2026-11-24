@@ -96,44 +96,66 @@ async function update(id, data) {
 }
 
 async function remove(id) {
-  const clienteId = Number(id);
+    const clienteId = Number(id);
 
-  const cliente =
-    await prisma.cliente.findUnique({
-      where: {id: clienteId,},
+    if (!Number.isInteger(clienteId) || clienteId <= 0) {
+        const error = new Error("Identificador do cliente inválido.");
+        error.statusCode = 400;
+        throw error;
+    }
+
+    return prisma.$transaction(async (tx) => {
+
+        const cliente = await tx.cliente.findUnique({
+            where: {
+                id: clienteId
+            }
+        });
+
+        if (!cliente) {
+            const error = new Error("Cliente não encontrado.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const servicos = await tx.servico.count({
+            where: {
+                clienteId
+            }
+        });
+
+        const agendamentos = await tx.agendamento.count({
+            where: {
+                clienteId
+            }
+        });
+
+        if (servicos > 0 || agendamentos > 0) {
+            const error = new Error(
+                `Este cliente possui ${servicos} serviço(s) e ${agendamentos} agendamento(s) vinculados e não pode ser excluído.`
+            );
+
+            error.statusCode = 409;
+            throw error;
+        }
+
+        const notificacoesRemovidas = await tx.notificacao.deleteMany({
+            where: {
+                clienteId
+            }
+        });
+
+        await tx.cliente.delete({
+            where: {
+                id: clienteId
+            }
+        });
+
+        return {
+            message: "Cliente excluído com sucesso.",
+            notificacoesRemovidas: notificacoesRemovidas.count
+        };
     });
-
-  if (!cliente) {
-    const error = new Error("Cliente não encontrado");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  const servicos =
-    await prisma.servico.count({
-      where: {clienteId,},
-    });
-
-  const agendamentos = await prisma.agendamento.count({
-      where: {clienteId,},
-    });
-
-  const notificacoes = await prisma.notificacao.count({
-      where: {clienteId,},
-    });
-
-  if (servicos > 0 || agendamentos > 0 || notificacoes > 0) {
-    const error = new Error(
-      "Este cliente possui registros vinculados e não pode ser excluído."
-    );
-
-    error.statusCode = 409;
-    throw error;
-  }
-
-  return clienteRepository.remove(
-    clienteId
-  );
 }
 
 module.exports = {

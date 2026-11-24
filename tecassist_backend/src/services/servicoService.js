@@ -1,6 +1,22 @@
 const prisma = require("../config/prisma");
 const servicoRepository = require("../repositories/servicoRepository");
 const gerarCodigo = require("../utils/createCodeServico");
+const gerarCodigoConsulta = require("../utils/createCodigoConsulta");
+
+const STATUS_SERVICO_VALIDOS = Object.freeze([
+    "ABERTO",
+    "EM_ANDAMENTO",
+    "AGUARDANDO_PECA",
+    "CONCLUIDO",
+    "ENTREGUE",
+    "CANCELADO",
+]);
+
+const STATUS_LEGADOS = new Set([
+    "EM_ANALISE",
+    "EM_MANUTENCAO",
+    "PRONTO",
+]);
 
 function erroHttp(mensagem, statusCode) {
     const error = new Error(mensagem);
@@ -39,6 +55,7 @@ async function create(data) {
     }
 
     data.status = "ABERTO";
+    data.codigoConsulta = gerarCodigoConsulta();
 
     const servico = await servicoRepository.create(data);
 
@@ -71,84 +88,174 @@ async function findById(id) {
     return servico;
 }
 
-async function update(id, data) {
+async function consultarStatusPublico(codigoConsulta) {
+    if (typeof codigoConsulta !== "string") {
+        return null;
+    }
 
-    return servicoRepository.update(
-        Number(id),
-        data
-    );
+    const codigoNormalizado = codigoConsulta.trim().toUpperCase();
+
+    if (!/^TA-[A-F0-9]{32}$/.test(codigoNormalizado)) {
+        return null;
+    }
+
+    return servicoRepository.findByCodigoConsulta(codigoNormalizado);
+}
+
+async function update(id, data) {
+    const servicoId = Number(id);
+    const dadosAtualizados = { ...data };
+
+    if (dadosAtualizados.status !== undefined) {
+        const status = String(dadosAtualizados.status).trim().toUpperCase();
+
+        if (!STATUS_SERVICO_VALIDOS.includes(status)) {
+            if (STATUS_LEGADOS.has(status)) {
+                const atual = await servicoRepository.findById(servicoId);
+
+                if (!atual || atual.status.toUpperCase() !== status) {
+                    throw erroHttp("Status inválido", 400);
+                }
+            } else {
+                throw erroHttp("Status inválido", 400);
+            }
+        }
+
+        dadosAtualizados.status = status;
+    }
+
+    return servicoRepository.update(servicoId, dadosAtualizados);
 }
 
 async function remove(id) {
+    const idServico = Number(id);
 
-    return servicoRepository.remove(
-        Number(id)
-    );
+    if (!Number.isInteger(idServico) || idServico <= 0) {
+        throw erroHttp("Identificador do serviço inválido.", 400);
+    }
+
+    try {
+        return await prisma.$transaction(async (tx) => {
+
+            const servico = await tx.servico.findUnique({
+                where: {
+                    id: idServico
+                },
+                select: {
+                    id: true,
+                    codigo: true,
+                    pecas: {
+                        select: {
+                            id: true,
+                            estoqueId: true,
+                            quantidade: true
+                        }
+                    }
+                }
+            });
+
+            if (!servico) {
+                throw erroHttp("Serviço não encontrado.", 404);
+            }
+
+            let unidadesDevolvidas = 0;
+
+            for (const vinculo of servico.pecas) {
+
+                const atualizacao = await tx.estoque.updateMany({
+                    where: {
+                        id: vinculo.estoqueId
+                    },
+                    data: {
+                        quantidade: {
+                            increment: vinculo.quantidade
+                        }
+                    }
+                });
+
+                if (atualizacao.count !== 1) {
+                    throw erroHttp(
+                        "Uma das peças vinculadas não foi encontrada no estoque. Nenhuma alteração foi realizada.",
+                        409
+                    );
+                }
+
+                await tx.movimentacaoEstoque.create({
+                    data: {
+                        tipo: "ENTRADA",
+                        quantidade: vinculo.quantidade,
+                        estoqueId: vinculo.estoqueId
+                    }
+                });
+
+                unidadesDevolvidas += vinculo.quantidade;
+            }
+
+            const vinculosRemovidos = await tx.servicoPeca.deleteMany({
+                where: {
+                    servicoId: idServico
+                }
+            });
+
+            if (vinculosRemovidos.count !== servico.pecas.length) {
+                throw erroHttp(
+                    "Os vínculos das peças foram alterados durante a operação. Atualize a tela e tente novamente.",
+                    409
+                );
+            }
+
+            await servicoRepository.remove(idServico, tx);
+
+            return {
+                message: "Serviço excluído e peças devolvidas ao estoque com sucesso.",
+                servicoId: idServico,
+                codigo: servico.codigo,
+                pecasDevolvidas: servico.pecas.length,
+                unidadesDevolvidas
+            };
+        });
+
+    } catch (error) {
+
+        if (error.statusCode) {
+            throw error;
+        }
+
+        if (error.code === "P2025") {
+            throw erroHttp(
+                "O serviço não foi encontrado ou já foi excluído.",
+                404
+            );
+        }
+
+        if (error.code === "P2003") {
+            throw erroHttp(
+                "Não foi possível excluir o serviço porque ainda existem registros vinculados. Nenhuma alteração foi realizada.",
+                409
+            );
+        }
+
+        console.error("Erro ao excluir serviço:", error);
+
+        throw erroHttp(
+            "Ocorreu um problema ao excluir o serviço. Nenhuma alteração foi realizada. Tente novamente.",
+            500
+        );
+    }
 }
 
 async function atualizarStatus(id, status) {
+    const statusNormalizado =
+        typeof status === "string" ? status.trim().toUpperCase() : "";
 
-    const statusValidos = [
-        "ABERTO",
-        "EM_ANALISE",
-        "AGUARDANDO_PECA",
-        "EM_MANUTENCAO",
-        "PRONTO",
-        "ENTREGUE",
-        "CANCELADO"
-    ];
-
-    if (!statusValidos.includes(status)) {
-        throw new Error("Status inválido");
+    if (!STATUS_SERVICO_VALIDOS.includes(statusNormalizado)) {
+        throw erroHttp("Status inválido", 400);
     }
 
     return servicoRepository.update(
         Number(id),
-        { status }
+        { status: statusNormalizado }
     );
-}
-
-async function converterAgendamento(agendamentoId, dadosServico) {
-    if (!dadosServico.usuarioId) {
-        throw new Error("Usuário responsável é obrigatório");
-    }
-
-    const agendamento = await prisma.agendamento.findUnique({
-        where: { id: Number(agendamentoId) }
-    });
-
-    if (!agendamento) {
-        throw new Error("Agendamento não encontrado");
-    }
-
-    const usuario = await prisma.usuario.findUnique({
-        where: { id: Number(dadosServico.usuarioId) }
-    });
-
-    if (!usuario) {
-        throw new Error("Usuário responsável não encontrado");
-    }
-
-    const servico = await servicoRepository.create({
-        ...dadosServico,
-        status: "ABERTO",
-        clienteId: agendamento.clienteId,
-        agendamentoId: agendamento.id
-    });
-
-    const codigo = gerarCodigo(servico.id);
-
-    await prisma.servico.update({
-        where: { id: servico.id },
-        data: { codigo }
-    });
-
-    await prisma.agendamento.update({
-        where: { id: agendamento.id },
-        data: { status: "CONVERTIDO" }
-    });
-
-    return servicoRepository.findById(servico.id);
 }
 
 async function adicionarPeca(
@@ -367,10 +474,10 @@ module.exports = {
     create,
     findAll,
     findById,
+    consultarStatusPublico,
     update,
     remove,
     atualizarStatus,
-    converterAgendamento,
     adicionarPeca,
     removerPeca
 };

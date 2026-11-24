@@ -13,6 +13,7 @@ import '../models/estoque_model.dart';
 import '../models/movimentacao_estoque_model.dart';
 import '../providers/estoque_provider.dart';
 import '../../../core/widgets/blue_pattern_background.dart';
+import '../../configuracoes/providers/configuracao_provider.dart';
 
 class EstoqueDetalhesPage extends StatefulWidget {
   final int estoqueId;
@@ -105,6 +106,9 @@ class _EstoqueDetalhesPageState extends State<EstoqueDetalhesPage> {
   }
 
   Future<void> _carregar() async {
+    await context.read<ConfiguracaoProvider>().carregar();
+    if (!mounted) return;
+
     final provider = context.read<EstoqueProvider>();
 
     final item = await provider.buscarPorId(widget.estoqueId);
@@ -238,6 +242,7 @@ class _EstoqueDetalhesPageState extends State<EstoqueDetalhesPage> {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final provider = context.watch<EstoqueProvider>();
+    final limiteEstoque = context.watch<ConfiguracaoProvider>().estoqueMinimo;
 
     return BackToHomeScope(
       child: Scaffold(
@@ -314,7 +319,7 @@ class _EstoqueDetalhesPageState extends State<EstoqueDetalhesPage> {
                   ),
                 ),
               )
-            : _conteudo(_item!, auth.isAdmin, provider),
+            : _conteudo(_item!, auth.isAdmin, provider, limiteEstoque),
       ),
     );
   }
@@ -323,10 +328,11 @@ class _EstoqueDetalhesPageState extends State<EstoqueDetalhesPage> {
     EstoqueModel item,
     bool podeGerenciar,
     EstoqueProvider provider,
+    int limiteEstoque,
   ) {
     final corQuantidade = item.semEstoque
         ? AppColors.error
-        : item.estoqueBaixo
+        : item.estoqueBaixoComLimite(limiteEstoque)
         ? Colors.orange.shade800
         : Colors.green.shade700;
 

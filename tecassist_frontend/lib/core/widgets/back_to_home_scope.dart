@@ -6,17 +6,39 @@ class BackToHomeScope extends StatelessWidget {
 
   const BackToHomeScope({super.key, required this.child});
 
+  String _rotaDeRetorno(BuildContext context) {
+    final caminho = GoRouterState.of(context).uri.path;
+
+    if (caminho.startsWith('/clientes')) {
+      return '/app/clientes';
+    }
+
+    if (caminho.startsWith('/agendamentos')) {
+      return '/app/agenda';
+    }
+
+    if (caminho.startsWith('/servicos')) {
+      return '/app/servicos';
+    }
+
+    if (caminho.startsWith('/estoque')) {
+      return '/app/estoque';
+    }
+
+    return '/app/home';
+  }
+
   @override
   Widget build(BuildContext context) {
+    final podeVoltar = context.canPop();
+
     return PopScope(
-      canPop: false,
+      canPop: podeVoltar,
 
       onPopInvoked: (didPop) {
-        if (didPop) {
-          return;
-        }
+        if (didPop) return;
 
-        context.go('/app/home');
+        context.go(_rotaDeRetorno(context));
       },
 
       child: child,
