@@ -432,11 +432,67 @@ class _ConsultaStatusPageState extends State<ConsultaStatusPage> {
               ],
             ),
           ),
+
           const SizedBox(height: 12),
           Text(
             _descricaoStatus(servico.status),
             style: const TextStyle(color: AppColors.textPrimary, height: 1.45),
           ),
+
+          const SizedBox(height: 18),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+
+          const Text(
+            'Valor do serviço',
+            style: TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+
+          const SizedBox(height: 5),
+
+          Text(
+            servico.valor != null
+                ? NumberFormat.currency(
+                    locale: 'pt_BR',
+                    symbol: 'R\$',
+                  ).format(servico.valor)
+                : 'Não informado / Em análise de orçamento',
+            style: TextStyle(
+              color: servico.valor != null
+                  ? AppColors.primary
+                  : AppColors.textSecondary,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+          if (servico.finishedAt != null) ...[
+            const SizedBox(height: 18),
+
+            Row(
+              children: [
+                const Icon(
+                  Icons.event_available_outlined,
+                  color: AppColors.textSecondary,
+                  size: 16,
+                ),
+                const SizedBox(width: 8),
+
+                Text(
+                  'Concluído em: ${_data(servico.finishedAt)}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+
           if (servico.createdAt != null) ...[
             const SizedBox(height: 16),
             const Divider(height: 1),

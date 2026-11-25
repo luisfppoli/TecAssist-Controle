@@ -63,7 +63,9 @@ async function findByCodigoConsulta(codigoConsulta) {
             marca: true,
             modelo: true,
             status: true,
+            valor: true,
             createdAt: true,
+            finishedAt: true,
         },
     });
 }
